@@ -1,0 +1,6 @@
+# Orquestra o Test Harness em contêiner isolado:
+#   docker compose run --rm test-harness
+services:
+  test-harness:
+    build: .
+    image: sdd-task-analyzer:latest
