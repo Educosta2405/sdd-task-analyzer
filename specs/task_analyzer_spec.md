@@ -2,6 +2,8 @@
 
 **Situação:** a Fase 1 não foi entregue. Este contrato foi reconstruído a partir dos enunciados da Fase 1 (pp. 2, 3 e 8) e da Fase 2 (seções 3.2 e 3.3); não é cópia de uma especificação produzida anteriormente.
 
+**Fonte da verdade:** este arquivo. Dele derivam, sem regras próprias, `specs/requirements.yaml` (requisitos estruturados e rastreáveis) e `specs/system_design_document.pdf` (documento de projeto, Fase 3). Qualquer mudança de regra é feita primeiro aqui.
+
 ## Objetivo
 Analisar uma lista de tarefas em memória e calcular indicadores de produtividade — totais, tempo médio de conclusão e taxa de atraso —, gerais e por prioridade. Entradas que violem o contrato geram `TaskValidationError`. Nenhum dado é persistido.
 
@@ -103,4 +105,8 @@ Em todos os conflitos prevalece a Fase 2, que é a entrega avaliada.
 | Interface | `test_tipo_entrada_errado`, `test_tarefa_nao_dicionario` |
 
 ## Planejamento de validação
-Executar `pytest -v` com Python 3.11+ na raiz do repositório. Evidências do terminal e do GitHub devem ser capturadas no ambiente real do estudante.
+- **Local:** `pytest -v` com Python 3.11+ na raiz do repositório.
+- **Integração contínua:** `.github/workflows/ci.yml` executa `pytest tests/test_harness.py -v` em `ubuntu-latest` com Python 3.11 a cada push ou Pull Request em `main` e `develop`.
+- **Contêiner:** `docker compose run --rm test-harness` executa a mesma suíte na imagem `python:3.11-slim`; o CI repete essa execução no job `docker`.
+
+Evidências do terminal e do GitHub devem ser capturadas no ambiente real do estudante.
