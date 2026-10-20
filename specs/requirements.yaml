@@ -1,0 +1,124 @@
+# Requisitos do TaskAnalyzer em formato estruturado (Fase 3).
+# Derivado de specs/task_analyzer_spec.md, que continua sendo a fonte da
+# verdade: qualquer mudança de regra é feita primeiro na especificação.
+# Não confundir com requirements.txt (dependências Python).
+
+projeto: sdd-task-analyzer
+fonte_da_verdade: specs/task_analyzer_spec.md
+modulo: src/task_analyzer.py
+suite_de_testes: tests/test_harness.py
+
+interface:
+  funcao: "analyze_tasks(tasks: list[dict[str, Any]]) -> TaskMetrics"
+  excecao: "TaskValidationError(ValueError)"
+  validacao_da_entrada:
+    descricao: "Entrada que não é lista, ou item que não é dicionário, gera TaskValidationError."
+    testes: [test_tipo_entrada_errado, test_tarefa_nao_dicionario]
+
+entrada:
+  - {campo: id_tarefa, tipo: int, obrigatorio: true, regra: "inteiro positivo e único"}
+  - {campo: data_criacao, tipo: datetime, obrigatorio: true, regra: "fuso UTC"}
+  - {campo: data_inicio, tipo: "datetime | None", obrigatorio: false, regra: "fuso UTC quando existente"}
+  - {campo: data_conclusao, tipo: "datetime | None", obrigatorio: false, regra: "fuso UTC quando existente"}
+  - {campo: prazo, tipo: datetime, obrigatorio: true, regra: "fuso UTC"}
+  - {campo: prioridade, tipo: str, obrigatorio: true, valores: [baixa, média, alta]}
+  - {campo: status, tipo: str, obrigatorio: true, valores: [concluída, pendente, cancelada]}
+
+saida:
+  campos_por_grupo:
+    - quantidade_tarefas
+    - total_tarefas
+    - total_concluidas
+    - total_pendentes
+    - total_canceladas
+    - tempo_medio_conclusao_min
+    - tempo_medio_conclusao_horas
+    - taxa_atraso_percentual
+  indicadores_por_prioridade: [baixa, média, alta]
+
+regras_de_negocio:
+  - id: RN-01
+    descricao: "Apenas tarefas concluídas entram na média e na taxa de atraso; pendentes e canceladas entram só nas contagens."
+    testes: [test_cenario_1_metricas_gerais_e_prioridades, test_apenas_pendentes]
+  - id: RN-02
+    descricao: "Duração = data_conclusao - data_inicio, em minutos e em horas."
+    testes: [test_cenario_1_metricas_gerais_e_prioridades]
+  - id: RN-03
+    descricao: "Atrasada = concluída com data_conclusao > prazo; conclusão igual ao prazo não é atraso."
+    testes: [test_cenario_1_metricas_gerais_e_prioridades, test_atraso_no_prazo_nao_conta]
+  - id: RN-04
+    descricao: "Média = soma das durações / concluídas; atraso = atrasadas / concluídas x 100."
+    testes: [test_cenario_1_metricas_gerais_e_prioridades]
+  - id: RN-05
+    descricao: "Sem tarefas concluídas, médias e taxa de atraso valem 0.0, sem exceção (prevenção de divisão por zero)."
+    testes: [test_lista_vazia, test_apenas_pendentes]
+  - id: RN-06
+    descricao: "Tempos e percentuais arredondados para duas casas decimais."
+    testes: [test_cenario_1_metricas_gerais_e_prioridades]
+  - id: RN-07
+    descricao: "Cronologia impossível (início ou conclusão antes da criação, conclusão antes do início) gera TaskValidationError."
+    testes:
+      - test_cenario_2_conclusao_antes_da_criacao
+      - test_cenario_2_conclusao_antes_do_inicio
+      - test_cenario_2_inicio_antes_da_criacao
+  - id: RN-08
+    descricao: "Todas as datas devem ser datetime com fuso UTC."
+    testes: [test_timezone_obrigatorio_utc]
+  - id: RN-09
+    descricao: "Status concluída exige data_inicio e data_conclusao; status não concluído não pode ter data_conclusao."
+    testes: [test_concluida_sem_datas, test_pendente_com_data_conclusao]
+  - id: RN-10
+    descricao: "Campo obrigatório ausente, id_tarefa inválido ou repetido e prioridade ou status fora da lista geram TaskValidationError."
+    testes: [test_campos_invalidos, test_campo_obrigatorio_ausente, test_identificador_duplicado]
+  - id: RN-11
+    descricao: "Mensagens de erro no formato 'Tarefa <id>: <motivo>'."
+    testes: [test_cenario_2_conclusao_antes_da_criacao, test_identificador_duplicado]
+  - id: RN-12
+    descricao: "Uma tarefa inválida rejeita o lote inteiro; não há resultado parcial."
+    testes: [test_cenario_2_lote_com_tarefa_invalida_e_rejeitado]
+
+cenarios_de_aceite:
+  - id: CA-01
+    nome: "Cenário 1 — sucesso"
+    dado: "Cinco tarefas válidas: três concluídas (120, 60 e 30 min; a de 120 min atrasada), uma pendente e uma cancelada."
+    quando: "analyze_tasks é executado."
+    entao: "Total 5; média 70.0 min (1.17 h); atraso 33.33%; por prioridade conforme a tabela da especificação."
+    testes: [test_cenario_1_metricas_gerais_e_prioridades]
+  - id: CA-02
+    nome: "Cenário 2 — erro"
+    dado: "Uma tarefa com data_conclusao anterior à data_criacao (ou ao início)."
+    quando: "analyze_tasks é executado."
+    entao: "Lança TaskValidationError com mensagem que identifica a tarefa e a inconsistência."
+    testes: [test_cenario_2_conclusao_antes_da_criacao, test_cenario_2_conclusao_antes_do_inicio]
+  - id: CA-03
+    nome: "Casos de borda"
+    dado: "Lista vazia ou apenas tarefas pendentes."
+    quando: "analyze_tasks é executado."
+    entao: "Médias e taxa de atraso valem 0.0, no geral e em cada prioridade."
+    testes: [test_lista_vazia, test_apenas_pendentes]
+
+requisitos_nao_funcionais:
+  - id: RNF-01
+    descricao: "Python 3.11 ou superior."
+    verificacao: "Execução: GitHub Actions (Python 3.11) e imagem python:3.11-slim."
+  - id: RNF-02
+    descricao: "Type hints em todas as funções e parâmetros."
+    verificacao: "Estática: revisão humana e mypy --strict (auditoria da Fase 2)."
+  - id: RNF-03
+    descricao: "Docstrings no padrão Google; PEP 8."
+    verificacao: "Estática: revisão humana e ruff (auditoria da Fase 2)."
+  - id: RNF-04
+    descricao: "Única dependência autorizada: pytest, com versão fixada."
+    verificacao: "requirements.txt (pytest==9.1.1)."
+  - id: RNF-05
+    descricao: "Sem persistência de dados; processamento em memória."
+    verificacao: "Revisão de código."
+  - id: RNF-06
+    descricao: "Logs com o módulo padrão logging, sem dados sensíveis."
+    verificacao: "Revisão de código."
+  - id: RNF-07
+    descricao: "Integração contínua em push e Pull Request nas branches main e develop."
+    verificacao: ".github/workflows/ci.yml (job test)."
+  - id: RNF-08
+    descricao: "Execução isolada em contêiner python:3.11-slim com um único comando."
+    verificacao: "Dockerfile, docker-compose.yml e job docker do CI: docker compose run --rm test-harness."
