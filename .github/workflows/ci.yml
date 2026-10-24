@@ -1,0 +1,54 @@
+# Integração contínua do TaskAnalyzer: executa o Test Harness em
+# Python 3.11 e dentro da imagem Docker a cada push ou Pull Request.
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test Harness (Python 3.11)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependências (requirements.txt)
+        run: |
+          python --version
+          python -m pip install -r requirements.txt
+
+      - name: Executar Test Harness
+        run: pytest tests/test_harness.py -v
+
+  docker:
+    name: Test Harness no contêiner (python:3.11-slim)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Versões do Docker
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Build da imagem
+        run: docker compose build
+
+      - name: Executar Test Harness no contêiner
+        run: docker compose run --rm test-harness

@@ -31,10 +31,18 @@
 - Solicitar explicações quando houver dúvida sobre a solução.
 - Revisar criticamente todo código gerado e rejeitar respostas que violem o contrato ou estas regras.
 - Não inventar commits, capturas de tela, resultados de testes ou outras evidências.
+- Registrar a participação da IA nos commits (`Co-Authored-By`) e nos Pull Requests.
+
+## Integração contínua, contêiner e dependências
+- Toda alteração entra na `main` por Pull Request com o workflow de CI aprovado (jobs `test` e `docker`).
+- Não desativar, pular ou enfraquecer etapas do CI (ex.: `continue-on-error`, testes ignorados) para obter build verde.
+- Dependências com versão fixada em `requirements.txt`; actions do GitHub fixadas por SHA de commit.
+- A imagem Docker usa `python:3.11-slim`, contém apenas o necessário para os testes e executa sem root.
+- Não incluir segredos, credenciais ou dados pessoais no código, no workflow ou na imagem.
 
 ## Homologação humana
 Todo código gerado por IA passa por revisão humana antes de entrar na `main`:
-1. Executar todos os testes automatizados (`pytest`).
+1. Executar todos os testes automatizados (`pytest`) e conferir o CI verde.
 2. Revisar a conformidade com o contrato e com estas regras.
 3. Analisar qualidade, legibilidade e tratamento de erros.
 4. Realizar testes manuais complementares em casos de borda.
